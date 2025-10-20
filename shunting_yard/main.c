@@ -41,21 +41,19 @@ size_t fromToken(Token token) {
 LinkedList tokenize(const char* str)
 {
     LinkedList list = lnew();
-    size_t index = 0;
-    size_t len = strlen(str);
 
-    while (index < len) {
-        char ch = str[index];
+    while (*str != 0) {
+        char ch = *str;
         TokenType type = -1;
         int32_t value = -1;
 
         switch (ch) {
             case '0'...'9':
                 type = INTEGER;
-                value = atol(str + index);
+                value = atoi(str);
 
-                while (str[index] >= '0' && str[index] <= '9') {
-                    index++;
+                while (*str >= '0' && *str <= '9') {
+                    str++;
                 }
 
                 break;
@@ -67,10 +65,10 @@ LinkedList tokenize(const char* str)
             case '/':
                 type = OPERATOR;
                 value = ch;
-                index++;
+                str++;
                 break;
             default:
-                index++;
+                str++;
                 break;
         }
 
@@ -188,7 +186,7 @@ void printRpn(const char* str)
 int main(void)
 {
     printRpn("(1 + 1) * 2");
-    printRpn("6 / (2 + 1) * 3");
+    printRpn("621 / (2560 + 1) * 3");
 
     return 0;
 }
