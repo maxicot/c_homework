@@ -22,11 +22,9 @@ char opener(char ch)
 bool isBalanced(const char* str)
 {
     LinkedList stack = lnew();
-    size_t len = strlen(str);
-    size_t index = 0;
 
-    while (index < len) {
-        char ch = str[index];
+    for (; *str != 0; str++) {
+        char ch = *str;
 
         switch (ch) {
             case '(':
@@ -45,8 +43,6 @@ bool isBalanced(const char* str)
 
                 break;
         }
-
-        index++;
     }
 
     return llen(&stack) == 0;
