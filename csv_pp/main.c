@@ -40,11 +40,13 @@ char** parseLine(const char* line, size_t* fieldCount)
 
             if (cnt == cap) {
                 cap *= 2;
-                fields = realloc(fields, cap * sizeof(char*));
+                char** newFields = realloc(fields, cap * sizeof(char*));
 
-                if (fields == nullptr) {
+                if (newFields == nullptr) {
                     return nullptr;
                 }
+
+                fields = newFields;
             }
         }
 
@@ -64,6 +66,21 @@ char** parseLine(const char* line, size_t* fieldCount)
     *fieldCount = cnt;
 
     return fields;
+}
+
+void printBorder(char ch, size_t maxCols, const size_t* colWidths)
+{
+    putchar('+');
+
+    for (size_t i = 0; i < maxCols; i++) {
+        for (size_t w = 0; w < colWidths[i] + 2; w++) {
+            putchar(ch);
+        }
+
+        putchar('+');
+    }
+
+    putchar('\n');
 }
 
 // Usage example:
@@ -89,11 +106,14 @@ int main()
             buf[--len] = '\0';
         }
 
-        lines = realloc(lines, (lineCount + 1) * sizeof(char*));
+        char** newLines = realloc(lines, (lineCount + 1) * sizeof(char*));
 
-        if (lines == nullptr) {
+        if (newLines == nullptr) {
+            free(lines);
             return ENOMEM;
         }
+
+        lines = newLines;
 
         lines[lineCount] = strdup(buf);
 
@@ -147,22 +167,7 @@ int main()
         free(fields);
     }
 
-    void printBorder(char ch) // gcc closure
-    {
-        putchar('+');
-
-        for (size_t i = 0; i < maxCols; i++) {
-            for (size_t w = 0; w < colWidths[i] + 2; w++) {
-                putchar(ch);
-            }
-
-            putchar('+');
-        }
-
-        putchar('\n');
-    }
-
-    printBorder('=');
+    printBorder('=', maxCols, colWidths);
 
     for (size_t i = 0; i < lineCount; i++) {
         size_t cnt = 0;
@@ -179,12 +184,12 @@ int main()
             putchar(' ');
 
             if (i == 0) {
-                printf("%-*s", colWidths[j], val);
+                printf("%-*s", (int)colWidths[j], val);
             } else {
                 if (isNumeric(val)) {
-                    printf("%*s", colWidths[j], val);
+                    printf("%*s", (int)colWidths[j], val);
                 } else {
-                    printf("%-*s", colWidths[j], val);
+                    printf("%-*s", (int)colWidths[j], val);
                 }
             }
 
@@ -199,7 +204,7 @@ int main()
         }
 
         free(fields);
-        printBorder(i == 0 ? '=' : '-');
+        printBorder(i == 0 ? '=' : '-', maxCols, colWidths);
     }
 
     for (size_t i = 0; i < lineCount; i++) {
