@@ -242,7 +242,7 @@ int main(int argc, char** argv)
     FILE* output = fopen(argv[2], "w");
 
     if (output == nullptr) {
-        fprintf(stderr, "Cannot open specified output file. Printing to stdout instead.\n");
+        fprintf(stderr, "Cannot open specified output file: %s.\nPrinting to stdout instead.\n", strerror(errno));
         output = stdout;
     }
 
