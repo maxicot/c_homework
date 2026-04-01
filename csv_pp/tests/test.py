@@ -30,8 +30,13 @@ cases = [
 ]
 
 for filename, expected in cases:
+    output = f"./tests/{filename}.output.txt"
     csv_pp = subprocess.run(
-        [f"./csv_pp < ./tests/{filename}"], shell=True, capture_output=True, text=True
+        [f"./csv_pp ./tests/{filename} {output}"],
+        shell=True,
+        capture_output=True,
+        text=True,
     )
 
-    assert csv_pp.stdout == expected
+    with open(output, "r") as file:
+        assert file.read() == expected

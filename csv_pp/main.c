@@ -68,26 +68,7 @@ char** parseLine(const char* line, size_t* fieldCount)
     return fields;
 }
 
-void printBorder(char ch, size_t maxCols, const size_t* colWidths)
-{
-    putchar('+');
-
-    for (size_t i = 0; i < maxCols; i++) {
-        for (size_t w = 0; w < colWidths[i] + 2; w++) {
-            putchar(ch);
-        }
-
-        putchar('+');
-    }
-
-    putchar('\n');
-}
-
-// Usage example:
-// ```
-// ./main < foo.csv
-// ```
-int main()
+void readCsv(FILE* file, char*** linesOut, size_t* lineCountOut, size_t* maxColsOut)
 {
     char** lines = nullptr;
     size_t lineCount = 0;
@@ -95,7 +76,7 @@ int main()
     char* buf = nullptr;
     size_t bufSize = 0;
 
-    while (getline(&buf, &bufSize, stdin) != -1) {
+    while (getline(&buf, &bufSize, file) != -1) {
         size_t len = strlen(buf);
 
         if (len > 0 && buf[len - 1] == '\n') {
@@ -110,7 +91,7 @@ int main()
 
         if (newLines == nullptr) {
             free(lines);
-            return ENOMEM;
+            exit(ENOMEM);
         }
 
         lines = newLines;
@@ -135,13 +116,21 @@ int main()
     free(buf);
 
     if (lineCount == 0) {
-        return 0;
+        fprintf(stderr, "Empty file");
+        exit(ENODATA);
     }
 
+    *linesOut = lines;
+    *lineCountOut = lineCount;
+    *maxColsOut = maxCols;
+}
+
+size_t* parseLines(char** lines, size_t lineCount, size_t maxCols)
+{
     size_t* colWidths = calloc(maxCols, sizeof(size_t));
 
     if (colWidths == nullptr) {
-        return ENOMEM;
+        exit(ENOMEM);
     }
 
     for (size_t i = 0; i < lineCount; i++) {
@@ -149,7 +138,7 @@ int main()
         char** fields = parseLine(lines[i], &cnt);
 
         if (fields == nullptr) {
-            return ENOMEM;
+            exit(ENOMEM);
         }
 
         for (size_t j = 0; j < cnt; j++) {
@@ -167,45 +156,97 @@ int main()
         free(fields);
     }
 
-    printBorder('=', maxCols, colWidths);
+    return colWidths;
+}
+
+void fprintBorder(char ch, size_t maxCols, const size_t* colWidths, FILE* file)
+{
+    fputc('+', file);
+
+    for (size_t i = 0; i < maxCols; i++) {
+        for (size_t w = 0; w < colWidths[i] + 2; w++) {
+            fputc(ch, file);
+        }
+
+        fputc('+', file);
+    }
+
+    fputc('\n', file);
+}
+
+void fprintCsvPretty(FILE* file, char** lines, size_t lineCount, size_t maxCols, const size_t* colWidths)
+{
+    fprintBorder('=', maxCols, colWidths, file);
 
     for (size_t i = 0; i < lineCount; i++) {
         size_t cnt = 0;
         char** fields = parseLine(lines[i], &cnt);
 
         if (fields == nullptr) {
-            return ENOMEM;
+            exit(ENOMEM);
         }
 
-        putchar('|');
+        fputc('|', file);
 
         for (size_t j = 0; j < maxCols; j++) {
             const char* val = (j < cnt) ? fields[j] : "";
-            putchar(' ');
+            fputc(' ', file);
 
             if (i == 0) {
-                printf("%-*s", (int)colWidths[j], val);
+                fprintf(file, "%-*s", (int)colWidths[j], val);
             } else {
                 if (isNumeric(val)) {
-                    printf("%*s", (int)colWidths[j], val);
+                    fprintf(file, "%*s", (int)colWidths[j], val);
                 } else {
-                    printf("%-*s", (int)colWidths[j], val);
+                    fprintf(file, "%-*s", (int)colWidths[j], val);
                 }
             }
 
-            putchar(' ');
-            putchar('|');
+            fputc(' ', file);
+            fputc('|', file);
         }
 
-        putchar('\n');
+        fputc('\n', file);
 
         for (size_t j = 0; j < cnt; j++) {
             free(fields[j]);
         }
 
         free(fields);
-        printBorder(i == 0 ? '=' : '-', maxCols, colWidths);
+        fprintBorder(i == 0 ? '=' : '-', maxCols, colWidths, file);
     }
+}
+
+// Usage example:
+// ```
+// ./csv_pp input.csv output.txt
+// ```
+int main(int argc, char** argv)
+{
+    if (argc != 3) {
+        fprintf(stderr, "Usage: ./csv_pp input.csv output.txt");
+        return EINVAL;
+    }
+
+    char** lines = nullptr;
+    size_t lineCount = 0;
+    size_t maxCols = 0;
+    FILE* input = fopen(argv[1], "r");
+
+    if (input == nullptr) {
+        return errno;
+    }
+
+    readCsv(input, &lines, &lineCount, &maxCols);
+    size_t* colWidths = parseLines(lines, lineCount, maxCols);
+    FILE* output = fopen(argv[2], "w");
+
+    if (output == nullptr) {
+        fprintf(stderr, "Cannot open specified output file. Printing to stdout instead.\n");
+        output = stdout;
+    }
+
+    fprintCsvPretty(output, lines, lineCount, maxCols, colWidths);
 
     for (size_t i = 0; i < lineCount; i++) {
         free(lines[i]);
